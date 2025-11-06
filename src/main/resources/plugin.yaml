@@ -1,0 +1,22 @@
+# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
+
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  # The name defines how the plugin is invoked, A unique name
+  name: data-statistics
+spec:
+  enabled: true
+  requires: ">=2.21.9"
+  author:
+    name: Handsome
+    website: https://github.com/Handsome
+  logo: logo.png
+  homepage: https://github.com/Handsome/data-statistics#readme
+  repo: https://github.com/Handsome/data-statistics
+  issues: https://github.com/Handsome/data-statistics/issues
+  displayName: "图析-Halo数据统计"
+  description: "为你的 Halo2 提供一个数据统计插件"
+  license:
+    - name: "GPL-3.0"
+      url: "https://github.com/Handsome/data-statistics/blob/main/LICENSE"

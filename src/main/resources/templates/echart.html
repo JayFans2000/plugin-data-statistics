@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title != null ? title : '数据统计'}">数据统计</title>
+    <link rel="stylesheet" href="/plugins/data-statistics/assets/static/css/dataStatistics.css">
+    <script src="/plugins/data-statistics/assets/static/js/echarts.min.js"></script>
+    <script src="/plugins/data-statistics/assets/static/js/pinyin.js"></script>
+</head>
+<body class="xhhaocom-dataStatistics-wrapper">
+    <div class="xhhaocom-dataStatistics-container">
+        <h1 class="xhhaocom-dataStatistics-title" th:text="${title != null ? title : '数据统计'}">数据统计</h1>
+        
+        <div class="xhhaocom-dataStatistics-section">
+            <div id="xhhaocom-dataStatistics-tagChart" class="xhhaocom-dataStatistics-chart"></div>
+        </div>
+        
+        <div class="xhhaocom-dataStatistics-section">
+            <div id="xhhaocom-dataStatistics-postChart" class="xhhaocom-dataStatistics-chart xhhaocom-dataStatistics-calendarChart"></div>
+        </div>
+        
+        <div class="xhhaocom-dataStatistics-section">
+            <div id="xhhaocom-dataStatistics-categoryChart" class="xhhaocom-dataStatistics-chart"></div>
+        </div>
+        
+        <div class="xhhaocom-dataStatistics-section">
+            <div id="xhhaocom-dataStatistics-commentChart" class="xhhaocom-dataStatistics-chart"></div>
+        </div>
+        
+        <div class="xhhaocom-dataStatistics-section">
+            <div id="xhhaocom-dataStatistics-popularChart" class="xhhaocom-dataStatistics-chart"></div>
+        </div>
+    </div>
+    <script src="/plugins/data-statistics/assets/static/js/dataStatistics.js"></script>
+</body>
+</html>
+

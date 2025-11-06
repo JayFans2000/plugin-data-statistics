@@ -1,0 +1,95 @@
+.xhhaocom-dataStatistics-wrapper {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 40px 20px;
+    min-height: 100vh;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+.xhhaocom-dataStatistics-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 50px 60px;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.xhhaocom-dataStatistics-title {
+    font-size: 32px;
+    margin-bottom: 50px;
+    color: #2c3e50;
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: -0.5px;
+    transition: color 0.3s ease;
+    margin-top: 0;
+}
+
+.xhhaocom-dataStatistics-section {
+    margin-bottom: 50px;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 35px;
+    border-radius: 20px;
+    border: 1px solid rgba(224, 224, 224, 0.5);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-sizing: border-box;
+}
+
+.xhhaocom-dataStatistics-section:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+    border-color: rgba(84, 112, 198, 0.3);
+}
+
+.xhhaocom-dataStatistics-section:last-child {
+    margin-bottom: 0;
+}
+
+.xhhaocom-dataStatistics-sectionTitle {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: #666;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    margin-top: 0;
+}
+
+.xhhaocom-dataStatistics-chart {
+    width: 100%;
+    height: 400px;
+    box-sizing: border-box;
+}
+
+#xhhaocom-dataStatistics-tagChart {
+    cursor: pointer;
+}
+
+.xhhaocom-dataStatistics-calendarChart {
+    height: 200px;
+}
+
+
+@media (max-width: 768px) {
+    .xhhaocom-dataStatistics-container {
+        padding: 15px;
+    }
+    
+    .xhhaocom-dataStatistics-chart {
+        height: 300px;
+    }
+    
+    .xhhaocom-dataStatistics-calendarChart {
+        height: 200px;
+    }
+}
+
