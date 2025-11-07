@@ -107,7 +107,7 @@ public class StatisticalServiceImpl implements StatisticalService {
                 Map<String, List<Comment>> commentsByUser = comments.stream()
                     .filter(comment -> comment.getSpec().getOwner() != null)
                     .collect(Collectors.groupingBy(comment -> {
-                        String name = comment.getSpec().getOwner().getName();
+                        String name = comment.getSpec().getOwner().getDisplayName();
                         return name != null ? name : "unknown";
                     }));
 

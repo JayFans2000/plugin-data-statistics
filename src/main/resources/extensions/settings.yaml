@@ -1,7 +1,7 @@
 apiVersion: v1alpha1
 kind: Setting
 metadata:
-  name: plugin-ZenNavigator-settings
+  name: plugin-dataStatistics-settings
 spec:
   forms:
     - group: basics
@@ -69,3 +69,27 @@ spec:
           key: title
           value: "数据统计"
           help: "网页标题"
+    - group: umami
+      label: umami设置
+      formSchema:
+        - $formkit: text
+          name: siteUrl
+          id: siteUrl
+          key: siteUrl
+          label: 站点地址
+          placeholder: 请输入站点地址
+          help: 启用后必填，格式：http(s)://你的 umami 地址 ，结尾无需加斜杠，未填写将无法推送
+        - $formkit: text
+          name: userName
+          id: userName
+          key: userName
+          label: 用户名
+          placeholder: 请输入你的 umami 用户名
+          help: 必填，用于 API 获取你的 umamiAPI Token 使用
+        - $formkit: password
+          name: userPassWord
+          id: userPassWord
+          key: userPassWord
+          label:  密码
+          placeholder: 请输入你的 umami 密码
+          help: 必填，用于 API 获取你的 umamiAPI Token 使用

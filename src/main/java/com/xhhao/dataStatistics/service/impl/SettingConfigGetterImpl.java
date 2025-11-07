@@ -16,4 +16,10 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
         return settingFetcher.fetch(BasicsConfig.GROUP, BasicsConfig.class)
             .defaultIfEmpty(new BasicsConfig());
     }
+
+    @Override
+    public Mono<UmamiConfig> getUmamiConfig() {
+        return settingFetcher.fetch(UmamiConfig.GROUP, UmamiConfig.class)
+            .defaultIfEmpty(new UmamiConfig());
+    }
 }
