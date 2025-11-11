@@ -110,10 +110,14 @@ public class UmamiServiceImpl implements UmamiService {
                         if (StrUtil.isBlank(baseUrl)) {
                             return Mono.error(new IllegalStateException("Umami 站点地址未配置"));
                         }
-                        return webClientBuilder.baseUrl(baseUrl).build()
+                        return webClientBuilder.baseUrl(baseUrl)
+                            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .build()
                             .get()
-                            .uri("/api/websites/" + id + "/active")
-                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                            .uri(uriBuilder -> uriBuilder
+                                .path("/api/realtime/{websiteId}")
+                                .queryParam("timezone", "Asia/Shanghai")
+                                .build(id))
                             .retrieve()
                             .bodyToMono(JsonNode.class);
                     })));
@@ -188,9 +192,9 @@ public class UmamiServiceImpl implements UmamiService {
                 }
                 return getWebsites()
                     .map(json -> {
-                        if (json.isArray() && json.size() > 0) {
+                        if (json.isArray() && !json.isEmpty()) {
                             JsonNode first = json.get(0);
-                            return first.has("id") ? first.get("id").asText() 
+                            return first.has("id") ? first.get("id").asText()
                                 : first.has("websiteId") ? first.get("websiteId").asText() : null;
                         }
                         throw new IllegalStateException("未找到可用的网站");
