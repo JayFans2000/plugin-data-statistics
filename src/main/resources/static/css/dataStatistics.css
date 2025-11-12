@@ -386,15 +386,24 @@ body[data-color-scheme='dark'],
 }
 
 .xhhaocom-dataStatistics-v2-activity-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px 8px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--halo-data-statistics-badge-text);
-    border-radius: 6px;
-    background: var(--halo-data-statistics-badge-bg);
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
 .xhhaocom-dataStatistics-v2-activity-subtitle {
@@ -749,8 +758,8 @@ body[data-color-scheme='dark'],
     }
 
     .xhhaocom-dataStatistics-v2-activity-badge {
-        background: rgba(14, 165, 233, 0.24);
-        color: #bae6fd;
+        background: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
     }
 
     .xhhaocom-dataStatistics-v2-activity-subtitle {
