@@ -328,7 +328,10 @@
                     header.innerHTML = `
                         <div class="xhhaocom-dataStatistics-v2-activity-title-box">
                             <span class="xhhaocom-dataStatistics-v2-activity-title">近30分钟网站活动</span>
-                            <span class="xhhaocom-dataStatistics-v2-activity-badge"></span>
+                            <span class="xhhaocom-dataStatistics-v2-activity-badge-wrapper">
+                                <span class="xhhaocom-dataStatistics-v2-activity-badge"></span>
+                                <span class="xhhaocom-dataStatistics-v2-activity-badge-text">实时数据</span>
+                            </span>
                         </div>
                         <span class="xhhaocom-dataStatistics-v2-activity-subtitle">
                             捕捉最新访客动态与来源

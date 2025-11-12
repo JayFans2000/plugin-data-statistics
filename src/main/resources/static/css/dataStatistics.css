@@ -385,6 +385,12 @@ body[data-color-scheme='dark'],
     letter-spacing: 0;
 }
 
+.xhhaocom-dataStatistics-v2-activity-badge-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .xhhaocom-dataStatistics-v2-activity-badge {
     display: inline-block;
     width: 8px;
@@ -393,6 +399,14 @@ body[data-color-scheme='dark'],
     background: #10b981;
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
     animation: pulse-green 2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+.xhhaocom-dataStatistics-v2-activity-badge-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: #10b981;
+    letter-spacing: 0.2px;
 }
 
 @keyframes pulse-green {
@@ -760,6 +774,10 @@ body[data-color-scheme='dark'],
     .xhhaocom-dataStatistics-v2-activity-badge {
         background: #10b981;
         box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+    }
+
+    .xhhaocom-dataStatistics-v2-activity-badge-text {
+        color: #34d399;
     }
 
     .xhhaocom-dataStatistics-v2-activity-subtitle {
