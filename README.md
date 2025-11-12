@@ -7,7 +7,8 @@
 
 ## 🌐 演示与交流
 
-- **演示站点**：[https://www.xhhao.com/](https://www.xhhao.com/chart)
+- **演示站点1**：[https://www.xhhao.com/](https://www.xhhao.com/chart)
+- **演示站点2**：[https://blog.timxs.com/](https://blog.timxs.com/)
 - **文档**：[https://docs.lik.cc/](https://docs.lik.cc/)
 - **QQ 交流群**：[![QQ群](https://www.xhhao.com/upload/iShot_2025-03-03_16.03.00.png)](https://www.xhhao.com/upload/iShot_2025-03-03_16.03.00.png)
 - 
