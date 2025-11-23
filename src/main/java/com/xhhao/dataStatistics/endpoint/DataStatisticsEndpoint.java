@@ -5,6 +5,7 @@ import static org.springdoc.core.fn.builders.parameter.Builder.parameterBuilder;
 import static org.springdoc.core.fn.builders.schema.Builder.schemaBuilder;
 
 import cn.hutool.core.util.StrUtil;
+import com.xhhao.dataStatistics.service.SettingConfigGetter;
 import com.xhhao.dataStatistics.service.StatisticalService;
 import com.xhhao.dataStatistics.service.UmamiService;
 import com.xhhao.dataStatistics.service.UptimeKumaService;
@@ -30,6 +31,7 @@ public class DataStatisticsEndpoint implements CustomEndpoint {
     private final StatisticalService statisticalService;
     private final UmamiService umamiService;
     private final UptimeKumaService uptimeKumaService;
+    private final SettingConfigGetter settingConfigGetter;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -87,6 +89,15 @@ public class DataStatisticsEndpoint implements CustomEndpoint {
                     .response(responseBuilder()
                         .responseCode("200")
                         .description("成功返回状态码：1-所有业务正常，0-全部业务异常，2-部分业务异常")
+                    );
+            })
+            .GET("/github/config", this::fetchGithubConfig, builder -> {
+                builder.operationId("fetchGithubConfig")
+                    .description("获取 GitHub 配置信息")
+                    .tag(tag)
+                    .response(responseBuilder()
+                        .responseCode("200")
+                        .description("成功返回 GitHub 配置（proxyUrl 和 username）")
                     );
             })
             .build();
@@ -157,6 +168,41 @@ public class DataStatisticsEndpoint implements CustomEndpoint {
                     .bodyValue("获取 Uptime Kuma 状态页面失败: " + e.getMessage());
             });
     }
+
+    private Mono<ServerResponse> fetchGithubConfig(ServerRequest request) {
+        return settingConfigGetter.getGithubConfig()
+            .map(config -> {
+                String proxyUrl = StrUtil.isNotBlank(config.getProxyUrl()) 
+                    ? normalizeUrl(config.getProxyUrl(),"https://github-readme-stats.vercel.app/")
+                    : "https://github-readme-stats.vercel.app/";
+                String graphProxyUrl = StrUtil.isNotBlank(config.getGraphProxyUrl())
+                    ? normalizeUrl(config.getGraphProxyUrl(),"https://github-readme-activity-graph.vercel.app/")
+                    : "https://github-readme-activity-graph.vercel.app/";
+                return new GithubConfigResponse(proxyUrl, config.getUsername(),graphProxyUrl);
+            })
+            .flatMap(config -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(config))
+            .onErrorResume(e -> {
+                log.error("获取 GitHub 配置失败", e);
+                return ServerResponse.status(500)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue("获取 GitHub 配置失败: " + e.getMessage());
+            });
+    }
+
+    private String normalizeUrl(String url,String defaultUrl) {
+        if (StrUtil.isBlank(url)) {
+            return defaultUrl;
+        }
+        String normalized = url.trim();
+        if (!normalized.endsWith("/")) {
+            normalized += "/";
+        }
+        return normalized;
+    }
+
+    private record GithubConfigResponse(String proxyUrl, String username, String graphProxyUrl) {}
 
     @Override
     public GroupVersion groupVersion() {

@@ -24,6 +24,14 @@
             element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-activity-loading">加载中</div>';
         } else if (element.classList.contains('xhhaocom-dataStatistics-v2-uptime-kuma')) {
             element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-uptime-kuma-loading">加载中</div>';
+        } else if (element.classList.contains('xhhaocom-dataStatistics-v2-github-pin')) {
+            element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-loading">加载中</div>';
+        } else if (element.classList.contains('xhhaocom-dataStatistics-v2-github-stats')) {
+            element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-loading">加载中</div>';
+        } else if (element.classList.contains('xhhaocom-dataStatistics-v2-github-top-langs')) {
+            element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-loading">加载中</div>';
+        } else if (element.classList.contains('xhhaocom-dataStatistics-v2-github-graph')) {
+            element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-loading">加载中</div>';
         }
     }
 
@@ -480,6 +488,169 @@
         element.setAttribute('data-cleanup', interval);
     }
 
+    let githubConfigCache = null;
+
+    function getGithubConfig() {
+        if (githubConfigCache) {
+            return Promise.resolve(githubConfigCache);
+        }
+        return fetch('/apis/api.data.statistics.xhhao.com/v1alpha1/github/config')
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP ${r.status}`);
+                }
+                return r.json();
+            })
+            .then(config => {
+                githubConfigCache = config;
+                return config;
+            });
+    }
+
+    function initGithubPin(element) {
+        element.className = 'xhhaocom-dataStatistics-v2-github-pin';
+        showLoading(element);
+
+        const repo = element.getAttribute('data-repo') || '';
+
+        getGithubConfig()
+            .then(config => {
+                if (!config.username) {
+                    throw new Error('GitHub 用户名未配置');
+                }
+
+                const params = new URLSearchParams();
+                params.append('username', config.username);
+                if (repo) {
+                    params.append('repo', repo);
+                }
+
+                const imageUrl = config.proxyUrl + 'api/pin/?' + params.toString();
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'GitHub Repository Stats';
+                img.style.maxWidth = '100%';
+                img.onerror = () => {
+                    element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+                };
+                element.innerHTML = '';
+                element.appendChild(img);
+            })
+            .catch(err => {
+                console.error('[GitHub Pin]', err);
+                element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+            });
+    }
+
+    function initGithubStats(element) {
+        element.className = 'xhhaocom-dataStatistics-v2-github-stats';
+        showLoading(element);
+
+        const locale = element.getAttribute('data-locale') || '';
+        const showIcons = element.getAttribute('data-show-icons') || '';
+        const theme = element.getAttribute('data-theme') || '';
+
+        getGithubConfig()
+            .then(config => {
+                if (!config.username) {
+                    throw new Error('GitHub 用户名未配置');
+                }
+
+                const params = new URLSearchParams();
+                params.append('username', config.username);
+                if (locale) params.append('locale', locale);
+                if (showIcons) params.append('show_icons', showIcons);
+                if (theme) params.append('theme', theme);
+
+                const imageUrl = config.proxyUrl + 'api?' + params.toString();
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'GitHub Stats';
+                img.style.maxWidth = '100%';
+                img.onerror = () => {
+                    element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+                };
+                element.innerHTML = '';
+                element.appendChild(img);
+            })
+            .catch(err => {
+                console.error('[GitHub Stats]', err);
+                element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+            });
+    }
+
+    function initGithubTopLangs(element) {
+        element.className = 'xhhaocom-dataStatistics-v2-github-top-langs';
+        showLoading(element);
+
+        const layout = element.getAttribute('data-layout') || '';
+        const hideProgress = element.getAttribute('data-hide-progress') || '';
+        const statsFormat = element.getAttribute('data-stats-format') || '';
+
+        getGithubConfig()
+            .then(config => {
+                if (!config.username) {
+                    throw new Error('GitHub 用户名未配置');
+                }
+
+                const params = new URLSearchParams();
+                params.append('username', config.username);
+                if (layout) params.append('layout', layout);
+                if (hideProgress) params.append('hide_progress', hideProgress);
+                if (statsFormat) params.append('stats_format', statsFormat);
+
+                const imageUrl = config.proxyUrl + 'api/top-langs/?' + params.toString();
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'GitHub Top Languages';
+                img.style.maxWidth = '100%';
+                img.onerror = () => {
+                    element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+                };
+                element.innerHTML = '';
+                element.appendChild(img);
+            })
+            .catch(err => {
+                console.error('[GitHub Top Langs]', err);
+                element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+            });
+    }
+
+    function initGithubGraph(element) {
+        element.className = 'xhhaocom-dataStatistics-v2-github-graph';
+        showLoading(element);
+
+        const theme = element.getAttribute('data-theme') || 'minimal';
+
+        getGithubConfig()
+            .then(config => {
+                if (!config.username) {
+                    throw new Error('GitHub 用户名未配置');
+                }
+
+                const params = new URLSearchParams();
+                params.append('username', config.username);
+                if (theme) {
+                    params.append('theme', theme);
+                }
+
+                const imageUrl = config.graphProxyUrl + 'graph?' + params.toString();
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'GitHub Activity Graph';
+                img.style.maxWidth = '100%';
+                img.onerror = () => {
+                    element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+                };
+                element.innerHTML = '';
+                element.appendChild(img);
+            })
+            .catch(err => {
+                console.error('[GitHub Graph]', err);
+                element.innerHTML = '<div class="xhhaocom-dataStatistics-v2-github-error">加载失败</div>';
+            });
+    }
+
     function init() {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
@@ -489,7 +660,11 @@
         const selectors = [
             '.xhhaocom-dataStatistics-v2-traffic',
             '.xhhaocom-dataStatistics-v2-activity',
-            '.xhhaocom-dataStatistics-v2-uptime-kuma'
+            '.xhhaocom-dataStatistics-v2-uptime-kuma',
+            '.xhhaocom-dataStatistics-v2-github-pin',
+            '.xhhaocom-dataStatistics-v2-github-stats',
+            '.xhhaocom-dataStatistics-v2-github-top-langs',
+            '.xhhaocom-dataStatistics-v2-github-graph'
         ];
 
         selectors.forEach(selector => {
@@ -500,6 +675,10 @@
                 if (className.includes('traffic')) componentType = 'traffic';
                 else if (className.includes('activity')) componentType = 'activity';
                 else if (className.includes('uptime-kuma')) componentType = 'uptime-kuma';
+                else if (className.includes('github-pin')) componentType = 'github-pin';
+                else if (className.includes('github-stats')) componentType = 'github-stats';
+                else if (className.includes('github-top-langs')) componentType = 'github-top-langs';
+                else if (className.includes('github-graph')) componentType = 'github-graph';
 
                 if (componentType && !element.hasAttribute('data-initialized')) {
                     element.setAttribute('data-initialized', 'true');
@@ -509,6 +688,14 @@
                         initRealtimeActivity(element, detectEmbedMode(element));
                     } else if (componentType === 'uptime-kuma') {
                         initUptimeKumaStatus(element);
+                    } else if (componentType === 'github-pin') {
+                        initGithubPin(element);
+                    } else if (componentType === 'github-stats') {
+                        initGithubStats(element);
+                    } else if (componentType === 'github-top-langs') {
+                        initGithubTopLangs(element);
+                    } else if (componentType === 'github-graph') {
+                        initGithubGraph(element);
                     }
                 }
             });

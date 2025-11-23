@@ -7,7 +7,8 @@ public interface SettingConfigGetter {
     Mono<BasicsConfig> getBasicsConfig();
     Mono<UmamiConfig> getUmamiConfig();
     Mono<UptimeConfig> getUptimeKumaConfig();
-
+    Mono<GithubConfig> getGithubConfig();
+    
     @Data
     class BasicsConfig {
         public static final String GROUP = "basics";
@@ -26,4 +27,12 @@ public interface SettingConfigGetter {
         public static final String GROUP = "uptime";
         private String uptimeUrl;
     }
+    @Data
+    class GithubConfig {
+        public static final String GROUP = "github";
+        private String proxyUrl;
+        private String graphProxyUrl;
+        private String username;
+    }
+    
 }

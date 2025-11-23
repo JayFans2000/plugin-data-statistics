@@ -8,8 +8,8 @@ on:
 jobs:
   cd:
     uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@v3
-    permissions:
-      contents: write
+    secrets:
+      halo-pat: ${{ secrets.HALO_PAT }}
     with:
       ui-path: "ui"
       pnpm-version: 9

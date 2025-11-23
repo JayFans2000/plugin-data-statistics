@@ -28,4 +28,10 @@ public class SettingConfigGetterImpl implements SettingConfigGetter {
         return settingFetcher.fetch(UptimeConfig.GROUP, UptimeConfig.class)
             .defaultIfEmpty(new UptimeConfig());
     }
+
+    @Override
+    public Mono<GithubConfig> getGithubConfig() {
+        return settingFetcher.fetch(GithubConfig.GROUP, GithubConfig.class)
+            .defaultIfEmpty(new GithubConfig());
+    }
 }

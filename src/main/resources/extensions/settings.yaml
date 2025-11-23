@@ -106,3 +106,30 @@ spec:
           label: 站点地址
           placeholder: 请输入站点地址
           help: 请输入 Uptime Kuma 状态页的完整 URL，例如：https://status.twouu.com/status/handsome
+    - group: github
+      label: Github统计设置
+      formSchema:
+        - $formkit: text
+          name: proxyUrl
+          id: proxyUrl
+          key: proxyUrl
+          label: 信息卡代理地址
+          placeholder: 请输入代理地址
+          value: "https://github-readme-stats.vercel.app/"
+          help: 默认是 https://github-readme-stats.vercel.app/，国内不可用需要反向代理
+        - $formkit: text
+          name: graphProxyUrl
+          id: graphProxyUrl
+          key: graphProxyUrl
+          label: 活力图代理地址
+          placeholder: 请输入代理地址
+          value: "https://github-readme-activity-graph.vercel.app/"
+          help: 默认是 https://github-readme-activity-graph.vercel.app/，国内不可用需要反向代理
+        - $formkit: text
+          name: username
+          id: username
+          key: username
+          label: GitHub名称
+          placeholder: 请输入GitHub用户名
+          validation: "required"
+          help: 必填，GitHub的唯一用户名
