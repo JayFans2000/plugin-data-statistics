@@ -35,13 +35,13 @@ public class DataStatisticsProcess implements TemplateHeadProcessor {
         properties.setProperty("version", pluginWrapper.getDescriptor().getVersion());
 
         return PROPERTY_PLACEHOLDER_HELPER.replacePlaceholders("""
-            <!-- flow-post start -->
-            <script defer src="/plugins/data-statistics/assets/static/js/chart.umd.min.js?version=${version}"></script>
-            <link rel="stylesheet" href="/plugins/data-statistics/assets/static/css/siteCharts.css?version=${version}" />
-            <script defer src="/plugins/data-statistics/assets/static/js/siteCharts.js?version=${version}"></script>
-            <script defer src="/plugins/data-statistics/assets/static/js/dataStatistics.js?version=${version}"></script>
-            <link rel="stylesheet" href="/plugins/data-statistics/assets/static/css/dataStatistics.css?version=${version}" />
-            <!-- flow-post end -->
+            <!-- data-statistics start -->
+            <script defer src="/plugins/data-statistics/assets/static/min/chart.umd.min.js?version=${version}"></script>
+            <link rel="stylesheet" href="/plugins/data-statistics/assets/static/min/siteCharts.min.css?version=${version}" />
+            <script defer src="/plugins/data-statistics/assets/static/min/siteCharts.min.js?version=${version}"></script>
+            <script defer src="/plugins/data-statistics/assets/static/min/dataStatistics.min.js?version=${version}"></script>
+            <link rel="stylesheet" href="/plugins/data-statistics/assets/static/min/dataStatistics.min.css?version=${version}" />
+            <!-- data-statistics end -->
             """, properties);
     }
 }
