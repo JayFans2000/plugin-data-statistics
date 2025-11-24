@@ -112,10 +112,36 @@ function toggleConfig(type: string) {
               @change="local.graphTheme = ($event.target as HTMLSelectElement).value; sync()"
             >
               <option value="minimal">Minimal（默认）</option>
-              <option value="github-dark">GitHub Dark</option>
+              <option value="radical">Radical</option>
+              <option value="coral">Coral</option>
+              <option value="nord">Nord</option>
+              <option value="lucent">Lucent</option>
               <option value="dracula">Dracula</option>
               <option value="gruvbox">Gruvbox</option>
-              <option value="radical">Radical</option>
+              <option value="chartreuse-dark">Chartreuse Dark</option>
+              <option value="github-light">GitHub Light</option>
+              <option value="github-dark">GitHub Dark</option>
+              <option value="github-dark-dimmed">GitHub Dark Dimmed</option>
+              <option value="material-palenight">Material Palenight</option>
+              <option value="green">Green</option>
+              <option value="gotham">Gotham</option>
+              <option value="noctis-minimus">Noctis Minimus</option>
+              <option value="monokai">Monokai</option>
+              <option value="one-dark">One Dark</option>
+              <option value="elegant">Elegant</option>
+              <option value="aqua">Aqua</option>
+              <option value="synthwave-84">Synthwave 84</option>
+              <option value="react">React</option>
+              <option value="merko">Merko</option>
+              <option value="vue">Vue</option>
+              <option value="tokyo-day">Tokyo Day</option>
+              <option value="tokyo-night">Tokyo Night</option>
+              <option value="high-contrast">High Contrast</option>
+              <option value="cobalt">Cobalt</option>
+              <option value="material">Material</option>
+              <option value="nightowl">Nightowl</option>
+              <option value="modern-lilac">Modern Lilac</option>
+              <option value="arctic">Arctic</option>
             </select>
           </div>
         </div>
