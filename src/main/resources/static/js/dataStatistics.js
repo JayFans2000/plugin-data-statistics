@@ -44,6 +44,14 @@
         return num.toString();
     }
 
+    function extractValue(data) {
+        if (data == null) return 0;
+        if (typeof data === 'object' && 'value' in data) {
+            return parseInt(data.value) || 0;
+        }
+        return parseInt(data) || 0;
+    }
+
     const regionDisplay = typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function'
         ? new Intl.DisplayNames(['zh-CN'], { type: 'region' })
         : null;
@@ -200,9 +208,10 @@
             section.appendChild(grid);
 
             if (visitData) {
-                const pageviews = parseInt(visitData.pageviews) || 0;
-                const visits = parseInt(visitData.visits) || 0;
-                const visitors = parseInt(visitData.visitors) || 0;
+                // 兼容新旧版本的数据格式
+                const pageviews = extractValue(visitData.pageviews);
+                const visits = extractValue(visitData.visits);
+                const visitors = extractValue(visitData.visitors);
 
                 grid.appendChild(createStatCard('chart-line', pageviews, '页面浏览量'));
                 grid.appendChild(createStatCard('account-group', visits, '访问次数'));
