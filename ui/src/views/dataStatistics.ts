@@ -128,42 +128,26 @@ const SiteStatistics = Node.create({
           items: [
             {
               priority: 122531,
-              props: {
-                icon: DeleteIcon,
-                title: "删除",
-                action: ({ editor }: { editor: Editor }) => {
-                  deleteNode(SiteStatistics.name, editor);
-                }
+              icon: DeleteIcon,
+              title: "删除",
+              action: () => {
+                deleteNode(SiteStatistics.name, editor);
               }
             },
             {
               priority: 122532,
-              props: {
-                icon: markRaw(MdiArrowULeftBottom),
-                title: "换行",
-                action: ({ editor }: { editor: Editor }) => {
-                  editor.commands.insertContentAt(
-                    editor.state.selection.$from.pos + 1,
-                    [{ type: "paragraph", content: "" }],
-                    { updateSelection: true }
-                  );
-                  editor.commands.focus(editor.state.selection.$from.pos, { scrollIntoView: true });
-                }
+              icon: markRaw(MdiArrowULeftBottom),
+              title: "换行",
+              action: () => {
+                editor.commands.insertContentAt(
+                  editor.state.selection.$from.pos + 1,
+                  [{ type: "paragraph", content: "" }],
+                  { updateSelection: true }
+                );
+                editor.commands.focus(editor.state.selection.$from.pos, { scrollIntoView: true });
               }
             }
           ]
-        };
-      },
-      getDraggable() {
-        return {
-          getRenderContainer({ dom }: { dom: HTMLElement }) {
-            let container = dom;
-            while (container && !container.hasAttribute("data-node-view-wrapper")) {
-              container = container.parentElement as HTMLElement;
-            }
-            return { el: container };
-          },
-          allowPropagationDownward: true
         };
       }
     };

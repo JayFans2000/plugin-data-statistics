@@ -7,7 +7,7 @@ metadata:
   name: data-statistics
 spec:
   enabled: true
-  requires: ">=2.21.9"
+  requires: ">=2.22.0"
   author:
     name: Handsome
     website: https://www.xhhao.com

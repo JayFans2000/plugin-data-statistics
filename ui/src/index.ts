@@ -1,4 +1,4 @@
-import { definePlugin } from '@halo-dev/console-shared'
+import { definePlugin } from '@halo-dev/ui-shared'
 import SiteStatistics from './views/dataStatistics'
 import UmamiStatistics from './views/umamiStatistics'
 import GithubStatistics from './views/githubStatistics'
