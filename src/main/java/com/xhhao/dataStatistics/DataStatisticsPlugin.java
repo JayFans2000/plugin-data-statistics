@@ -1,6 +1,7 @@
 package com.xhhao.dataStatistics;
 
 import org.springframework.stereotype.Component;
+
 import run.halo.app.plugin.BasePlugin;
 import run.halo.app.plugin.PluginContext;
 
@@ -10,7 +11,7 @@ import run.halo.app.plugin.PluginContext;
  * <p>Only one main class extending {@link BasePlugin} is allowed per plugin.</p>
  *
  * @author Handsome
- * @since 1.0.0
+ * @since 1.0.5
  */
 @Component
 public class DataStatisticsPlugin extends BasePlugin {

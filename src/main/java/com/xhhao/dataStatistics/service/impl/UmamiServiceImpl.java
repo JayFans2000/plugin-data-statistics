@@ -1,22 +1,27 @@
 package com.xhhao.dataStatistics.service.impl;
 
-import cn.hutool.cache.CacheUtil;
-import cn.hutool.cache.impl.TimedCache;
-import cn.hutool.core.util.StrUtil;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.xhhao.dataStatistics.service.SettingConfigGetter;
-import com.xhhao.dataStatistics.service.UmamiService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.function.Function;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.xhhao.dataStatistics.common.Constants;
+import com.xhhao.dataStatistics.service.SettingConfigGetter;
+import com.xhhao.dataStatistics.service.UmamiService;
+
+import cn.hutool.cache.CacheUtil;
+import cn.hutool.cache.impl.TimedCache;
+import cn.hutool.core.util.StrUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 @Component
 @RequiredArgsConstructor
@@ -26,10 +31,42 @@ public class UmamiServiceImpl implements UmamiService {
     private final SettingConfigGetter settingConfigGetter;
     private final WebClient.Builder webClientBuilder;
 
-    private static final long TOKEN_CACHE_EXPIRE_MS = Duration.ofHours(24).toMillis();
+    private static final long TOKEN_CACHE_EXPIRE_MS = Duration.ofHours(Constants.Cache.UMAMI_TOKEN_CACHE_HOURS).toMillis();
     private final TimedCache<String, String> tokenCache = CacheUtil.newTimedCache(TOKEN_CACHE_EXPIRE_MS);
 
     private static final String CACHE_KEY_PREFIX = "umami_token_";
+
+    /**
+     * 通用重试策略
+     */
+    private <T> Mono<T> withRetry(Mono<T> mono, String operationName) {
+        return mono.retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+            .maxBackoff(Duration.ofSeconds(5))
+            .filter(throwable -> throwable instanceof WebClientRequestException)
+            .doBeforeRetry(signal -> log.warn("{} 请求失败，正在重试 ({}/3): {}",
+                operationName, signal.totalRetries() + 1, signal.failure().getMessage())));
+    }
+
+    /**
+     * 通用 API 请求方法
+     */
+    private <T> Mono<T> executeApiRequest(
+            Function<WebClient, Mono<T>> requestBuilder,
+            String operationName) {
+        return getToken()
+            .flatMap(token -> getBaseUrl()
+                .flatMap(baseUrl -> {
+                    if (StrUtil.isBlank(baseUrl)) {
+                        return Mono.error(new IllegalStateException("Umami 站点地址未配置"));
+                    }
+                    WebClient client = webClientBuilder
+                        .baseUrl(baseUrl)
+                        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .build();
+                    return withRetry(requestBuilder.apply(client), operationName);
+                }))
+            .doOnError(error -> log.debug("{} 失败: {}", operationName, error.getMessage()));
+    }
 
     @Override
     public Mono<String> getToken() {
@@ -46,7 +83,7 @@ public class UmamiServiceImpl implements UmamiService {
                     return Mono.just(cachedToken);
                 }
 
-                log.info("缓存未命中，请求新的 Umami token");
+                log.debug("缓存未命中，请求新的 Umami token");
                 return requestToken(config)
                     .map(response -> {
                         tokenCache.put(cacheKey, response.token());
@@ -64,15 +101,16 @@ public class UmamiServiceImpl implements UmamiService {
         WebClient client = webClientBuilder.baseUrl(baseUrl).build();
         LoginRequest request = new LoginRequest(config.getUserName(), config.getUserPassWord());
 
-        return client.post()
-            .uri("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
-            .retrieve()
-            .bodyToMono(LoginResponse.class)
-            .doOnSuccess(response -> log.info("成功获取 Umami token"))
-            .doOnError(error -> log.error("请求 Umami token 失败: {}", error.getMessage()))
-            .onErrorResume(ex -> Mono.error(new IllegalStateException("请求 Umami token 失败: " + ex.getMessage(), ex)));
+        return withRetry(
+            client.post()
+                .uri("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(LoginResponse.class),
+            "Umami 登录"
+        ).doOnError(error -> log.error("请求 Umami token 失败: {}", error.getMessage()))
+         .onErrorResume(ex -> Mono.error(new IllegalStateException("请求 Umami token 失败: " + ex.getMessage(), ex)));
     }
 
 
@@ -87,48 +125,35 @@ public class UmamiServiceImpl implements UmamiService {
 
     @Override
     public Mono<JsonNode> getWebsites() {
-        return getToken()
-            .flatMap(token -> getBaseUrl()
-                .flatMap(baseUrl -> {
-                    if (StrUtil.isBlank(baseUrl)) {
-                        return Mono.error(new IllegalStateException("Umami 站点地址未配置"));
-                    }
-                    return webClientBuilder.baseUrl(baseUrl).build()
-                        .get()
-                        .uri("/api/websites")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .retrieve()
-                        .bodyToMono(JsonNode.class);
-                }));
+        return executeApiRequest(
+            client -> client.get()
+                .uri("/api/websites")
+                .retrieve()
+                .bodyToMono(JsonNode.class),
+            "获取 Umami 网站列表"
+        );
     }
+
     @Override
     public Mono<JsonNode> getRealtimeData(String websiteId) {
         return resolveWebsiteId(websiteId)
-            .flatMap(id -> getToken()
-                .flatMap(token -> getBaseUrl()
-                    .flatMap(baseUrl -> {
-                        if (StrUtil.isBlank(baseUrl)) {
-                            return Mono.error(new IllegalStateException("Umami 站点地址未配置"));
-                        }
-                        return webClientBuilder.baseUrl(baseUrl)
-                            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                            .build()
-                            .get()
-                            .uri(uriBuilder -> uriBuilder
-                                .path("/api/realtime/{websiteId}")
-                                .queryParam("timezone", "Asia/Shanghai")
-                                .build(id))
-                            .retrieve()
-                            .bodyToMono(JsonNode.class);
-                    })));
+            .flatMap(id -> executeApiRequest(
+                client -> client.get()
+                    .uri(uriBuilder -> uriBuilder
+                        .path("/api/realtime/{websiteId}")
+                        .queryParam("timezone", Constants.DEFAULT_TIMEZONE)
+                        .build(id))
+                    .retrieve()
+                    .bodyToMono(JsonNode.class),
+                "获取实时数据"
+            ));
     }
 
     @Override
     public Mono<JsonNode> getVisitStatistics(String websiteId, String type) {
-        ZoneId zoneId = ZoneId.of("Asia/Shanghai");
         return resolveWebsiteId(websiteId)
             .flatMap(id -> {
-                LocalDateTime now = LocalDateTime.now(zoneId);
+                LocalDateTime now = LocalDateTime.now(Constants.DEFAULT_ZONE_ID);
                 var timeRange = switch (type.toLowerCase()) {
                     case "daily" -> new TimeRange(now.minusDays(1), "day");
                     case "weekly" -> new TimeRange(now.minusDays(7), "day");
@@ -142,8 +167,8 @@ public class UmamiServiceImpl implements UmamiService {
                     return Mono.error(new IllegalArgumentException("不支持的统计类型: " + type));
                 }
 
-                long startAt = timeRange.start.atZone(zoneId).toInstant().toEpochMilli();
-                long endAt = now.atZone(zoneId).toInstant().toEpochMilli();
+                long startAt = timeRange.start.atZone(Constants.DEFAULT_ZONE_ID).toInstant().toEpochMilli();
+                long endAt = now.atZone(Constants.DEFAULT_ZONE_ID).toInstant().toEpochMilli();
                 
                 return fetchVisitStatistics(id, startAt, endAt, timeRange.unit);
             });
@@ -157,28 +182,20 @@ public class UmamiServiceImpl implements UmamiService {
     }
     
     private Mono<JsonNode> fetchVisitStatistics(String websiteId, long startAt, long endAt, String unit) {
-        return getToken()
-            .flatMap(token -> getBaseUrl()
-                .flatMap(baseUrl -> {
-                    if (StrUtil.isBlank(baseUrl)) {
-                        return Mono.error(new IllegalStateException("Umami 站点地址未配置"));
-                    }
-                    return webClientBuilder.baseUrl(baseUrl)
-                        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .build()
-                        .get()
-                        .uri(uriBuilder -> uriBuilder
-                            .path("/api/websites/{websiteId}/stats")
-                            .queryParam("startAt", startAt)
-                            .queryParam("endAt", endAt)
-                            .queryParam("unit", unit)
-                            .queryParam("timezone", "Asia/Shanghai")
-                            .build(websiteId))
-                        .retrieve()
-                        .bodyToMono(JsonNode.class);
-                }));
+        return executeApiRequest(
+            client -> client.get()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/api/websites/{websiteId}/stats")
+                    .queryParam("startAt", startAt)
+                    .queryParam("endAt", endAt)
+                    .queryParam("unit", unit)
+                    .queryParam("timezone", Constants.DEFAULT_TIMEZONE)
+                    .build(websiteId))
+                .retrieve()
+                .bodyToMono(JsonNode.class),
+            "获取访问统计"
+        );
     }
-
 
 
     private Mono<String> resolveWebsiteId(String websiteId) {

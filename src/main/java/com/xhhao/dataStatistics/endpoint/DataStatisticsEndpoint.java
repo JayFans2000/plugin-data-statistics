@@ -4,20 +4,24 @@ import static org.springdoc.core.fn.builders.apiresponse.Builder.responseBuilder
 import static org.springdoc.core.fn.builders.parameter.Builder.parameterBuilder;
 import static org.springdoc.core.fn.builders.schema.Builder.schemaBuilder;
 
-import cn.hutool.core.util.StrUtil;
-import com.xhhao.dataStatistics.service.SettingConfigGetter;
-import com.xhhao.dataStatistics.service.StatisticalService;
-import com.xhhao.dataStatistics.service.UmamiService;
-import com.xhhao.dataStatistics.service.UptimeKumaService;
-import com.xhhao.dataStatistics.vo.PieChartVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springdoc.webflux.core.fn.SpringdocRouteBuilder;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+
+import com.xhhao.dataStatistics.common.ApiResponse;
+import com.xhhao.dataStatistics.common.Constants;
+import com.xhhao.dataStatistics.service.SettingConfigGetter;
+import com.xhhao.dataStatistics.service.StatisticalService;
+import com.xhhao.dataStatistics.service.UmamiService;
+import com.xhhao.dataStatistics.service.UptimeKumaService;
+import com.xhhao.dataStatistics.vo.PieChartVO;
+
+import cn.hutool.core.util.StrUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
@@ -103,27 +107,27 @@ public class DataStatisticsEndpoint implements CustomEndpoint {
             .build();
     }
 
+    /**
+     * 统一错误响应处理
+     */
+    private Mono<ServerResponse> handleError(String operation, Throwable e) {
+        log.error("{}失败", operation, e);
+        return ServerResponse.status(500)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(ApiResponse.error(operation + "失败", e.getMessage()));
+    }
+
     private Mono<ServerResponse> fetchChartData(ServerRequest request) {
         return statisticalService.getPieChartVO()
             .flatMap(dataSource -> ServerResponse.ok().bodyValue(dataSource))
             .switchIfEmpty(ServerResponse.ok().bodyValue(new PieChartVO()))
-            .onErrorResume(e -> {
-                log.error("Failed to fetch chart data", e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取图表数据失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取图表数据", e));
     }
 
     private Mono<ServerResponse> fetchUmamiWebsites(ServerRequest request) {
         return umamiService.getWebsites()
             .flatMap(data -> ServerResponse.ok().bodyValue(data))
-            .onErrorResume(e -> {
-                log.error("获取Umami网站列表失败", e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取Umami网站列表失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取 Umami 网站列表", e));
     }
 
     private Mono<ServerResponse> fetchVisits(ServerRequest request) {
@@ -132,66 +136,47 @@ public class DataStatisticsEndpoint implements CustomEndpoint {
         if (!typeParam.matches("daily|weekly|monthly|quarterly|yearly")) {
             return ServerResponse.badRequest()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("type 参数错误，支持的值: daily, weekly, monthly, quarterly, yearly");
+                .bodyValue(ApiResponse.error("参数错误", "type 参数错误，支持的值: daily, weekly, monthly, quarterly, yearly"));
         }
         
         return umamiService.getVisitStatistics(null, typeParam)
             .flatMap(data -> ServerResponse.ok().bodyValue(data))
-            .onErrorResume(e -> {
-                log.error("获取{}访问统计失败", typeParam, e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取" + typeParam + "访问统计失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取" + typeParam + "访问统计", e));
     }
+
     private Mono<ServerResponse> fetchRealtimeVisits(ServerRequest request) {
         String websiteIdParam = request.queryParam("websiteId").orElse("");
         String finalWebsiteId = StrUtil.isBlank(websiteIdParam) ? null : websiteIdParam;
         
         return umamiService.getRealtimeVisitStatistics(finalWebsiteId)
             .flatMap(data -> ServerResponse.ok().bodyValue(data))
-            .onErrorResume(e -> {
-                log.error("获取实时访问统计失败", e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取实时访问统计失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取实时访问统计", e));
     }
 
     private Mono<ServerResponse> fetchUptimeKumaStatus(ServerRequest request) {
         return uptimeKumaService.getStatusPage()
             .flatMap(data -> ServerResponse.ok().bodyValue(data))
-            .onErrorResume(e -> {
-                log.error("获取 Uptime Kuma 状态页面失败", e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取 Uptime Kuma 状态页面失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取 Uptime Kuma 状态页面", e));
     }
 
     private Mono<ServerResponse> fetchGithubConfig(ServerRequest request) {
         return settingConfigGetter.getGithubConfig()
             .map(config -> {
                 String proxyUrl = StrUtil.isNotBlank(config.getProxyUrl()) 
-                    ? normalizeUrl(config.getProxyUrl(),"https://github-readme-stats.vercel.app/")
-                    : "https://github-readme-stats.vercel.app/";
+                    ? normalizeUrl(config.getProxyUrl(), Constants.DefaultUrls.GITHUB_STATS_URL)
+                    : Constants.DefaultUrls.GITHUB_STATS_URL;
                 String graphProxyUrl = StrUtil.isNotBlank(config.getGraphProxyUrl())
-                    ? normalizeUrl(config.getGraphProxyUrl(),"https://github-readme-activity-graph.vercel.app/")
-                    : "https://github-readme-activity-graph.vercel.app/";
-                return new GithubConfigResponse(proxyUrl, config.getUsername(),graphProxyUrl);
+                    ? normalizeUrl(config.getGraphProxyUrl(), Constants.DefaultUrls.GITHUB_GRAPH_URL)
+                    : Constants.DefaultUrls.GITHUB_GRAPH_URL;
+                return new GithubConfigResponse(proxyUrl, config.getUsername(), graphProxyUrl);
             })
             .flatMap(config -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(config))
-            .onErrorResume(e -> {
-                log.error("获取 GitHub 配置失败", e);
-                return ServerResponse.status(500)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("获取 GitHub 配置失败: " + e.getMessage());
-            });
+            .onErrorResume(e -> handleError("获取 GitHub 配置", e));
     }
 
-    private String normalizeUrl(String url,String defaultUrl) {
+    private String normalizeUrl(String url, String defaultUrl) {
         if (StrUtil.isBlank(url)) {
             return defaultUrl;
         }

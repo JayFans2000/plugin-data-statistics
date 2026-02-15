@@ -1,18 +1,23 @@
 package com.xhhao.dataStatistics.service.impl;
 
-import cn.hutool.core.text.StrFormatter;
-import cn.hutool.core.util.StrUtil;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.Duration;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.xhhao.dataStatistics.service.SettingConfigGetter;
 import com.xhhao.dataStatistics.service.UptimeKumaService;
+
+import cn.hutool.core.text.StrFormatter;
+import cn.hutool.core.util.StrUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-
-import java.net.URI;
-import java.net.URISyntaxException;
+import reactor.util.retry.Retry;
 
 @Slf4j
 @Component
@@ -20,7 +25,7 @@ import java.net.URISyntaxException;
 public class UptimeKumaServiceImpl implements UptimeKumaService {
 
     private final SettingConfigGetter settingConfigGetter;
-    private final WebClient.Builder webClientBuilder;
+    private final WebClient webClient;
 
     @Override
     public Mono<UptimeStatus> getStatusPage() {
@@ -28,7 +33,7 @@ public class UptimeKumaServiceImpl implements UptimeKumaService {
             .flatMap(config -> {
                 var statusPageUrl = StrUtil.trim(config.getUptimeUrl());
                 if (StrUtil.isBlank(statusPageUrl)) {
-                    log.warn("Uptime Kuma 状态页 URL 未配置，请在插件设置中配置");
+                    log.debug("Uptime Kuma 状态页 URL 未配置");
                     return Mono.error(new IllegalStateException("Uptime Kuma 状态页 URL 未配置，请在插件设置中配置状态页 URL"));
                 }
 
@@ -43,14 +48,19 @@ public class UptimeKumaServiceImpl implements UptimeKumaService {
     }
 
     private Mono<Integer> requestStatusData(String apiUrl) {
-        log.info("请求 Uptime Kuma API: {}", apiUrl);
-        return webClientBuilder.build()
+        log.debug("请求 Uptime Kuma API: {}", apiUrl);
+        return webClient
             .get()
             .uri(apiUrl)
             .retrieve()
             .bodyToMono(JsonNode.class)
             .map(this::parseStatusData)
-            .doOnError(error -> log.error("调用 Uptime Kuma API 失败: {}", error.getMessage()));
+            .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                .maxBackoff(Duration.ofSeconds(5))
+                .filter(throwable -> throwable instanceof WebClientRequestException)
+                .doBeforeRetry(signal -> log.warn("Uptime Kuma API 请求失败，正在重试 ({}/3): {}",
+                    signal.totalRetries() + 1, signal.failure().getMessage())))
+            .doOnError(error -> log.debug("调用 Uptime Kuma API 失败: {}", error.getMessage()));
     }
 
     private Integer parseStatusData(JsonNode jsonNode) {

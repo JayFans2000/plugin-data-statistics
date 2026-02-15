@@ -1,11 +1,28 @@
 package com.xhhao.dataStatistics.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.xhhao.dataStatistics.service.StatisticalService;
-import com.xhhao.dataStatistics.vo.PieChartVO;
-import lombok.RequiredArgsConstructor;
+import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xhhao.dataStatistics.common.Constants;
+import com.xhhao.dataStatistics.service.StatisticalService;
+import com.xhhao.dataStatistics.vo.PieChartVO;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.content.Category;
 import run.halo.app.core.extension.content.Comment;
@@ -14,28 +31,42 @@ import run.halo.app.core.extension.content.Tag;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.ReactiveExtensionClient;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.apache.commons.lang3.ObjectUtils.defaultIfNull;
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class StatisticalServiceImpl implements StatisticalService {
+    
     private final ReactiveExtensionClient client;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 缓存的图表数据
+     */
+    private volatile Mono<PieChartVO> cachedChartData;
+
     @Override
     public Mono<PieChartVO> getPieChartVO() {
+        // 使用 Mono.cache() 实现缓存，避免重复计算
+        if (cachedChartData == null) {
+            cachedChartData = buildPieChartVO()
+                .cache(Duration.ofMinutes(Constants.Cache.CHART_DATA_CACHE_MINUTES));
+        }
+        return cachedChartData
+            .onErrorResume(e -> {
+                log.warn("缓存的图表数据失效，重新获取: {}", e.getMessage());
+                cachedChartData = null;
+                return buildPieChartVO();
+            });
+    }
+
+    /**
+     * 清除缓存（可用于强制刷新）
+     */
+    public void clearCache() {
+        cachedChartData = null;
+    }
+
+    private Mono<PieChartVO> buildPieChartVO() {
         PieChartVO pieChartVO = new PieChartVO();
 
         Mono<List<PieChartVO.Tag>> tagsMono = client.listAll(Tag.class, new ListOptions(),
@@ -62,89 +93,21 @@ public class StatisticalServiceImpl implements StatisticalService {
                 Sort.by(Sort.Order.desc("metadata.creationTimestamp")))
             .filter(post -> post.getSpec().getPublishTime() != null)
             .collectList()
-            .map(posts -> {
-                Map<String, Integer> postsByDate = posts.stream()
-                    .collect(Collectors.groupingBy(post -> {
-                        Instant publishTime = post.getSpec().getPublishTime();
-                        if (publishTime != null) {
-                            return publishTime.atZone(ZoneId.systemDefault())
-                                .toLocalDate().toString();
-                        }
-                        return post.getMetadata().getCreationTimestamp()
-                            .atZone(ZoneId.systemDefault())
-                            .toLocalDate().toString();
-                    }, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
-
-                LocalDate today = LocalDate.now();
-                LocalDate startDate = today.minusYears(1);
-
-                return Stream.iterate(startDate, date -> date.plusDays(1))
-                    .limit(java.time.temporal.ChronoUnit.DAYS.between(startDate, today.plusDays(1)))
-                    .map(date -> {
-                        String dateStr = date.toString();
-                        PieChartVO.Article articleVO = new PieChartVO.Article();
-                        articleVO.setName(dateStr);
-                        articleVO.setDate(date.atStartOfDay(ZoneId.systemDefault()).toLocalDateTime());
-                        articleVO.setTotal(postsByDate.getOrDefault(dateStr, 0));
-                        return articleVO;
-                    })
-                    .sorted(Comparator.comparing(PieChartVO.Article::getDate).reversed())
-                    .collect(Collectors.toList());
-            });
+            .map(this::buildArticleList);
 
         Mono<List<PieChartVO.Comment>> commentsMono = client.listAll(Comment.class, new ListOptions(),
                 Sort.by(Sort.Order.desc("metadata.creationTimestamp")))
             .collectList()
-            .map(comments -> {
-                Map<String, List<Comment>> commentsByUser = comments.stream()
-                    .filter(comment -> comment.getSpec().getOwner() != null)
-                    .collect(Collectors.groupingBy(comment -> {
-                        String name = comment.getSpec().getOwner().getName();
-                        return name != null ? name : "unknown";
-                    }));
+            .map(this::buildCommentList);
 
-                return commentsByUser.entrySet().stream()
-                    .map(entry -> {
-                        Comment firstComment = entry.getValue().getFirst();
-                        PieChartVO.Comment commentVO = new PieChartVO.Comment();
-                        commentVO.setName(firstComment.getSpec().getOwner().getName());
-                        commentVO.setEmail(entry.getKey());
-                        commentVO.setUsername(firstComment.getSpec().getOwner().getDisplayName());
-                        commentVO.setCount(entry.getValue().size());
-                        return commentVO;
-                    })
-                    .sorted(Comparator.comparing(PieChartVO.Comment::getCount).reversed())
-                    .collect(Collectors.toList());
-            });
         Mono<List<PieChartVO.Top10Article>> top10ArticlesMono = client.listAll(Post.class, new ListOptions(),
                 Sort.by(Sort.Order.desc("metadata.creationTimestamp")))
             .filter(post -> post.getSpec().getPublishTime() != null)
-            .<PieChartVO.Top10Article>handle((post, sink) -> {
-                PieChartVO.Top10Article top10Article = new PieChartVO.Top10Article();
-                top10Article.setName(post.getSpec().getTitle());
-                int visits = 0;
-                Map<String, String> annotations = post.getMetadata().getAnnotations();
-                if (annotations != null) {
-                    String statsJson = annotations.get("content.halo.run/stats");
-                    if (statsJson != null && !statsJson.isEmpty()) {
-                        JsonNode statsNode;
-                        try {
-                            statsNode = objectMapper.readTree(statsJson);
-                        } catch (JsonProcessingException e) {
-                            sink.error(new RuntimeException(e));
-                            return;
-                        }
-                        if (statsNode.has("visit")) {
-                            visits = statsNode.get("visit").asInt();
-                        }
-                    }
-                }
-                top10Article.setViews(visits);
-                sink.next(top10Article);
-            })
+            .map(this::buildTop10Article)
             .sort(Comparator.comparing(PieChartVO.Top10Article::getViews).reversed())
             .take(10)
             .collectList();
+
         return Mono.zip(tagsMono, categoriesMono, articlesMono, commentsMono, top10ArticlesMono)
             .map(tuple -> {
                 pieChartVO.setTags(tuple.getT1());
@@ -155,4 +118,80 @@ public class StatisticalServiceImpl implements StatisticalService {
                 return pieChartVO;
             });
     }
+
+    private List<PieChartVO.Article> buildArticleList(List<Post> posts) {
+        Map<String, Integer> postsByDate = posts.stream()
+            .collect(Collectors.groupingBy(post -> {
+                Instant publishTime = post.getSpec().getPublishTime();
+                if (publishTime != null) {
+                    return publishTime.atZone(Constants.DEFAULT_ZONE_ID)
+                        .toLocalDate().toString();
+                }
+                return post.getMetadata().getCreationTimestamp()
+                    .atZone(Constants.DEFAULT_ZONE_ID)
+                    .toLocalDate().toString();
+            }, Collectors.collectingAndThen(Collectors.counting(), Long::intValue)));
+
+        LocalDate today = LocalDate.now(Constants.DEFAULT_ZONE_ID);
+        LocalDate startDate = today.minusYears(1);
+
+        return Stream.iterate(startDate, date -> date.plusDays(1))
+            .limit(java.time.temporal.ChronoUnit.DAYS.between(startDate, today.plusDays(1)))
+            .map(date -> {
+                String dateStr = date.toString();
+                PieChartVO.Article articleVO = new PieChartVO.Article();
+                articleVO.setName(dateStr);
+                articleVO.setDate(date.atStartOfDay(Constants.DEFAULT_ZONE_ID).toLocalDateTime());
+                articleVO.setTotal(postsByDate.getOrDefault(dateStr, 0));
+                return articleVO;
+            })
+            .sorted(Comparator.comparing(PieChartVO.Article::getDate).reversed())
+            .collect(Collectors.toList());
+    }
+
+    private List<PieChartVO.Comment> buildCommentList(List<Comment> comments) {
+        Map<String, List<Comment>> commentsByUser = comments.stream()
+            .filter(comment -> comment.getSpec().getOwner() != null)
+            .collect(Collectors.groupingBy(comment -> {
+                String name = comment.getSpec().getOwner().getName();
+                return name != null ? name : "unknown";
+            }));
+
+        return commentsByUser.entrySet().stream()
+            .map(entry -> {
+                Comment firstComment = entry.getValue().getFirst();
+                PieChartVO.Comment commentVO = new PieChartVO.Comment();
+                commentVO.setName(firstComment.getSpec().getOwner().getName());
+                commentVO.setEmail(entry.getKey());
+                commentVO.setUsername(firstComment.getSpec().getOwner().getDisplayName());
+                commentVO.setCount(entry.getValue().size());
+                return commentVO;
+            })
+            .sorted(Comparator.comparing(PieChartVO.Comment::getCount).reversed())
+            .collect(Collectors.toList());
+    }
+
+    private PieChartVO.Top10Article buildTop10Article(Post post) {
+        PieChartVO.Top10Article top10Article = new PieChartVO.Top10Article();
+        top10Article.setName(post.getSpec().getTitle());
+        
+        int visits = 0;
+        Map<String, String> annotations = post.getMetadata().getAnnotations();
+        if (annotations != null) {
+            String statsJson = annotations.get("content.halo.run/stats");
+            if (statsJson != null && !statsJson.isEmpty()) {
+                try {
+                    JsonNode statsNode = objectMapper.readTree(statsJson);
+                    if (statsNode.has("visit")) {
+                        visits = statsNode.get("visit").asInt();
+                    }
+                } catch (JsonProcessingException e) {
+                    log.warn("解析文章统计信息失败: {}", e.getMessage());
+                }
+            }
+        }
+        top10Article.setViews(visits);
+        return top10Article;
+    }
+
 }
